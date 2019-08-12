@@ -1,0 +1,31 @@
+Arguments: 
+  /home/vinicius/.nvm/versions/node/v12.6.0/bin/node /usr/share/yarn/bin/yarn.js add -D babel-cli babel-preset-env
+
+PATH: 
+  /home/vinicius/.nvm/versions/node/v12.6.0/bin:/usr/lib/jvm/jdk1.8.0_144:/home/vinicius/anaconda3/bin:/opt/gradle//bin:/usr/local/bin:/usr/bin:/bin:/usr/local/games:/usr/games
+
+Yarn version: 
+  1.15.2
+
+Node version: 
+  12.6.0
+
+Platform: 
+  linux x64
+
+Trace: 
+  SyntaxError: /home/vinicius/repos/modern-graphql-course/graphql-basics/package.json: Unexpected end of JSON input
+      at JSON.parse (<anonymous>)
+      at /usr/share/yarn/lib/cli.js:1625:59
+      at Generator.next (<anonymous>)
+      at step (/usr/share/yarn/lib/cli.js:304:30)
+      at /usr/share/yarn/lib/cli.js:315:13
+
+npm manifest: 
+  
+
+yarn manifest: 
+  No manifest
+
+Lockfile: 
+  No lockfile
