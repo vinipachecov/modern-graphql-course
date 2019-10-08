@@ -80,3 +80,50 @@ add(parent, args, context, info) {
 1. parent: data from the resolver method we are using
 2. args: arguments sent due to the resolver function signature
 3. context: the data passed through the server middleware
+4. info: information about the query we are abount to make
+
+## Args
+
+Args are extremelly common to use as we usually send data through it. Instead of fetching stuff from body or query, everything comes from args.
+In other words, a mutation that would delete a comment:
+
+```
+mutation{
+  deleteComment(id: 3) {
+    	id
+    text
+	}
+}
+```
+
+Would receive this "id" in the resolver like this:
+
+```
+ deleteComment(parent, args, { db }, info) {
+      const commentIndex = db.comments.findIndex(
+        comment => comment.id === args.id
+      );
+
+      if (commentIndex === -1) {
+        throw new Error("Comment not found");
+      }
+
+      const [removedIndex] = db.comments.splice(commentIndex, 1);
+
+      return removedIndex;
+    }
+```
+
+## Context
+
+Context can be used as a fast way to improve flexibility of our resolvers on how they access important variables such as a database connection.
+
+```
+const server = new GraphQLServer({
+  typeDefs: "./schema.graphql",
+  resolvers,
+  context: {
+    db  // some sort of database connection (sequelize, knex or something like this)
+  }
+});
+```
