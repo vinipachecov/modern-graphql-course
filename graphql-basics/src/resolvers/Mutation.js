@@ -1,4 +1,5 @@
 import uuidV4 from "uuid/v4";
+import { PubSub } from "graphql-yoga";
 
 const Mutation = {
   updateUser(parent, args, { db }, info) {
@@ -45,7 +46,7 @@ const Mutation = {
     return user;
   },
 
-  createPost(parent, args, { db }, info) {
+  createPost(parent, args, { db, pubsub }, info) {
     const userExits = db.users.some(user => user.id === args.data.author);
     if (!userExits) {
       throw new Error("User does not exists!");
@@ -57,6 +58,15 @@ const Mutation = {
     };
 
     db.posts.push(post);
+
+    if (args.data.published) {
+      pubsub.publish("post", {
+        post: {
+          mutation: "CREATRED",
+          data: post
+        }
+      });
+    }
 
     return post;
   },
@@ -76,11 +86,16 @@ const Mutation = {
 
     db.comments.push(comment);
 
-    pubsub.publish(`comment ${args.data.post}`, { comment });
+    pubsub.publish(`comment ${args.data.post}`, {
+      comment: {
+        mutation: "CREATED",
+        data: comment
+      }
+    });
 
     return comment;
   },
-  deleteUser(parent, args, { db }, info) {
+  deleteUser(parent, args, { db, pubsub }, info) {
     // find user to be deleted
     const userIndex = db.users.findIndex(user => user.id === args.id);
 
@@ -100,9 +115,16 @@ const Mutation = {
     });
 
     db.comments = db.comments.filter(comment => comment.author !== args.id);
+
+    pubsub.publish(`comment ${args.data.post}`, {
+      comment: {
+        mutation: "CREATED",
+        data: comment
+      }
+    });
     return removedUsed[0];
   },
-  deletePost(parent, args, { db }, info) {
+  deletePost(parent, args, { db, pubsub }, info) {
     const postIndex = db.posts.findIndex(post => post.id === args.id);
 
     if (postIndex === -1) {
@@ -112,11 +134,22 @@ const Mutation = {
     db.comments = db.comments.filter(comment => comment.post !== args.id);
 
     const removedPost = db.posts.splice(postIndex, 1);
+
+    if (removedPost[0].published) {
+      pubsub.publish("post", {
+        post: {
+          mutation: "DELETED",
+          data: removedPost[0]
+        }
+      });
+    }
+
     return removedPost[0];
   },
-  updatePost(parent, args, { db }, info) {
+  updatePost(parent, args, { db, pubsub }, info) {
     const { id, data } = args;
     const post = db.posts.find(post => post.id === id);
+    const originalPost = { ...post };
 
     if (!post) {
       throw new Error("Post not found!");
@@ -132,11 +165,34 @@ const Mutation = {
 
     if (typeof data.published === "boolean") {
       post.published = data.published;
+
+      if (originalPost.published && !post.published) {
+        pubsub.publish("post", {
+          post: {
+            mutation: "DELETED",
+            data: originalPost
+          }
+        });
+      } else if (!originalPost.published && post.published) {
+        pubsub.publish("post", {
+          post: {
+            mutation: "CREATED",
+            data: post
+          }
+        });
+      }
+    } else if (post.published) {
+      pubsub.publish("post", {
+        post: {
+          mutation: "UPDATED",
+          data: post
+        }
+      });
     }
 
     return post;
   },
-  deleteComment(parent, args, { db }, info) {
+  deleteComment(parent, args, { db, pubsub }, info) {
     const commentIndex = db.comments.findIndex(
       comment => comment.id === args.id
     );
@@ -145,11 +201,17 @@ const Mutation = {
       throw new Error("Comment not found");
     }
 
-    const [removedIndex] = db.comments.splice(commentIndex, 1);
+    const [removedComment] = db.comments.splice(commentIndex, 1);
+    pubsub.publish(`comment ${removedComment.post}`, {
+      comment: {
+        mutation: "DELETED",
+        data: removedComment
+      }
+    });
 
-    return removedIndex;
+    return removedComment;
   },
-  updateComment(parent, args, { db }, info) {
+  updateComment(parent, args, { db, pubsub }, info) {
     const { id, data } = args;
     const comment = db.comments.find(comment => comment.id === id);
 
@@ -159,6 +221,13 @@ const Mutation = {
     if (typeof data.text === "string") {
       comment.text = data.text;
     }
+
+    pubsub.publish(`comment ${comment.post}`, {
+      comment: {
+        mutation: "UPDATED",
+        data: comment
+      }
+    });
 
     return comment;
   }
